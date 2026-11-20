@@ -51,19 +51,6 @@ TEST(OrderQueue, CloseWakesABlockedConsumer) {
     consumer.join();
 }
 
-TEST(OrderQueue, PopBatchTakesUpToMaxInOrder) {
-    OrderQueue<int> q(16);
-    for (int i = 0; i < 10; ++i) q.push(i);
-    std::vector<int> out;
-    ASSERT_TRUE(q.popBatch(out, 4));
-    EXPECT_EQ(out, (std::vector<int>{0, 1, 2, 3}));
-    ASSERT_TRUE(q.popBatch(out, 100));
-    EXPECT_EQ(out, (std::vector<int>{4, 5, 6, 7, 8, 9}));
-    q.close();
-    EXPECT_FALSE(q.popBatch(out, 100));
-    EXPECT_TRUE(out.empty());
-}
-
 TEST(Concurrency, FourProducersEveryOrderProcessedOnceAndQuantityConserved) {
     constexpr int kProducers = 4;
     constexpr int kOrdersPerProducer = 25000;  // 100,000 in total

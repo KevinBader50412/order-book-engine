@@ -6,7 +6,6 @@
 #include <mutex>
 #include <optional>
 #include <utility>
-#include <vector>
 
 namespace ob {
 
@@ -27,52 +26,24 @@ public:
     // Returns false if the queue was closed (the item is not enqueued).
     bool push(T item) {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (!closed_ && items_.size() >= capacity_) {
-            ++waitingProducers_;
-            notFull_.wait(lock, [this] { return closed_ || items_.size() < capacity_; });
-            --waitingProducers_;
-        }
+        notFull_.wait(lock, [this] { return closed_ || items_.size() < capacity_; });
         if (closed_) return false;
         items_.push_back(std::move(item));
-        // Only pay for a notify when the consumer is actually asleep.
-        const bool wake = waitingConsumers_ > 0;
         lock.unlock();
-        if (wake) notEmpty_.notify_one();
+        notEmpty_.notify_one();
         return true;
     }
 
     // Returns nullopt only once the queue is closed and empty.
     std::optional<T> pop() {
         std::unique_lock<std::mutex> lock(mutex_);
-        waitForItems(lock);
+        notEmpty_.wait(lock, [this] { return closed_ || !items_.empty(); });
         if (items_.empty()) return std::nullopt;  // closed and drained
         T item = std::move(items_.front());
         items_.pop_front();
-        const bool wake = waitingProducers_ > 0;
         lock.unlock();
-        if (wake) notFull_.notify_all();
+        notFull_.notify_one();
         return item;
-    }
-
-    // Moves up to `max` items into `out` (which is cleared first) under a
-    // single lock acquisition. Blocks while the queue is empty and open.
-    // Returns false only once the queue is closed and drained.
-    //
-    // Taking a batch per lock is what makes the queue fast: the consumer
-    // contends for the mutex once per batch instead of once per order.
-    bool popBatch(std::vector<T>& out, std::size_t max) {
-        out.clear();
-        std::unique_lock<std::mutex> lock(mutex_);
-        waitForItems(lock);
-        if (items_.empty()) return false;  // closed and drained
-        while (!items_.empty() && out.size() < max) {
-            out.push_back(std::move(items_.front()));
-            items_.pop_front();
-        }
-        const bool wake = waitingProducers_ > 0;
-        lock.unlock();
-        if (wake) notFull_.notify_all();
-        return true;
     }
 
     void close() {
@@ -97,21 +68,12 @@ public:
     std::size_t capacity() const { return capacity_; }
 
 private:
-    void waitForItems(std::unique_lock<std::mutex>& lock) {
-        if (closed_ || !items_.empty()) return;
-        ++waitingConsumers_;
-        notEmpty_.wait(lock, [this] { return closed_ || !items_.empty(); });
-        --waitingConsumers_;
-    }
-
     const std::size_t capacity_;
     mutable std::mutex mutex_;
     std::condition_variable notEmpty_;
     std::condition_variable notFull_;
     std::deque<T> items_;
     bool closed_ = false;
-    std::size_t waitingProducers_ = 0;
-    std::size_t waitingConsumers_ = 0;
 };
 
 }  // namespace ob

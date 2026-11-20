@@ -111,7 +111,7 @@ All 37 tests pass in Release, ASan+UBSan and TSan builds.
 | `Order.hpp`, `Trade.hpp` | Plain structs |
 | `ExecutionReport.hpp` | Result of one operation: accepted/rejected, reason, trades, filled and remaining quantity |
 | `OrderBook.hpp/.cpp` | `addLimit`, `addMarket`, `cancel`, `bestBid`, `bestAsk`, `depth(n)`, `checkInvariants` |
-| `OrderQueue.hpp` | Bounded blocking queue: `push`, `pop`, `popBatch`, `close` |
+| `OrderQueue.hpp` | Bounded blocking queue: `push`, `pop`, `close` |
 | `MatchingEngine.hpp/.cpp` | Owns the queue, the book and the matching thread; calls listeners |
 | `CommandParser.hpp/.cpp` | Turns text lines into `Command`s |
 | `src/main.cpp` | CLI |
@@ -151,8 +151,8 @@ std::unordered_map<OrderId, Locator> index_;  // side + level iterator + list it
 
 | Mode | Throughput | p50 | p99 | p99.9 |
 |------|-----------:|----:|----:|------:|
-| 4 producers → queue → 1 matching thread | **~1.53 M orders/s** | 0.33 µs | 2.6 µs | 6.3 µs |
-| Single-threaded baseline (direct calls, no queue) | ~1.50 M orders/s | 0.37 µs | 1.9 µs | 6.1 µs |
+| 4 producers → queue → 1 matching thread | ~81,000 orders/s | 0.69 µs | 3.8 µs | 13 µs |
+| Single-threaded baseline (direct calls, no queue) | **~1.6 M orders/s** | 0.33 µs | 1.8 µs | 5.1 µs |
 
 The max latency (tens of ms) is not in the table. It comes from rare OS scheduling or page-fault stalls on the shared VM, not from the book.
 

@@ -33,23 +33,16 @@ void MatchingEngine::stop() {
 
 void MatchingEngine::run() {
     using Clock = std::chrono::steady_clock;
-    constexpr std::size_t kBatch = 1024;
-    std::vector<Command> batch;
-    batch.reserve(kBatch);
-    // Commands are still applied strictly one at a time, in queue order; the
-    // batch only reduces how often the matching thread takes the queue lock.
-    while (queue_.popBatch(batch, kBatch)) {
-        for (const Command& cmd : batch) {
-            if (recordLatency_) {
-                const auto t0 = Clock::now();
-                apply(cmd);
-                const auto t1 = Clock::now();
-                latencies_.push_back(std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count());
-            } else {
-                apply(cmd);
-            }
+    while (auto cmd = queue_.pop()) {
+        if (recordLatency_) {
+            const auto t0 = Clock::now();
+            apply(*cmd);
+            const auto t1 = Clock::now();
+            latencies_.push_back(std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count());
+        } else {
+            apply(*cmd);
         }
-        processed_.fetch_add(batch.size(), std::memory_order_relaxed);
+        processed_.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
