@@ -1,0 +1,8 @@
+build/
+build-*/
+target/
+*.o
+*.a
+.vscode/
+.idea/
+compile_commands.json
