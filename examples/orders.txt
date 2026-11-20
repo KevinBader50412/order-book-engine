@@ -1,0 +1,33 @@
+# Sample session for ./engine --replay examples/orders.txt
+# Prices are decimal with at most two places; they are stored as integer ticks.
+
+# Build up both sides of the book
+ADD 1 SELL LIMIT 50 101.00
+ADD 2 SELL LIMIT 30 101.50
+ADD 3 SELL LIMIT 20 101.00
+ADD 4 BUY LIMIT 40 100.00
+ADD 5 BUY LIMIT 25 99.50
+PRINT
+
+# Crosses the spread: fills 50 from order 1, then 20 from order 3 (same
+# price, later arrival), then 10 at 101.50 from order 2
+ADD 6 BUY LIMIT 80 101.50
+PRINT
+
+# Market sell sweeps the bids; 15 is left over and is cancelled
+ADD 7 SELL MARKET 80
+
+# Cancels: one resting order, one unknown id, one already filled
+CANCEL 2
+CANCEL 99
+CANCEL 1
+
+# Rejections
+ADD 8 BUY LIMIT 0 100.00
+ADD 9 BUY LIMIT 10 0
+ADD 6 BUY LIMIT 10 100.00
+
+ADD 10 BUY LIMIT 15 100.25
+ADD 11 SELL LIMIT 15 100.75
+PRINT
+QUIT
