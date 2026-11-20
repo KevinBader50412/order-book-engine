@@ -156,9 +156,7 @@ std::unordered_map<OrderId, Locator> index_;  // side + level iterator + list it
 
 The max latency (tens of ms) is not in the table. It comes from rare OS scheduling or page-fault stalls on the shared VM, not from the book.
 
-**Reading the numbers.** The queued pipeline keeps up with direct calls because producers and the matching thread run in parallel. The matching thread is the bottleneck, so throughput is roughly what one core can match. Matching more orders per second would mean a faster book (see "How to make it faster"), not more producers. About 20% of the 200,000 cancels are rejected, because the order was filled before its cancel arrived. That is normal in a live market.
 
-**A note on the queue.** The first version locked and signalled a condition variable on every push and every pop. It reached only **~77k orders/s** with 4 producers, because the matching thread spent its time fighting producers for the mutex. Two changes gave a **~20× speed-up**: the consumer now takes up to 1,024 commands per lock (`popBatch`), and threads only notify when someone is actually waiting. Commands are still applied strictly one at a time, in arrival order.
 
 ## Design decisions and trade-offs
 
